@@ -6,23 +6,21 @@
 #
 from twisted.internet import protocol, reactor
 from twisted.internet.error import CannotListenError, ConnectError
-from twisted.internet.interfaces import IReactorTCP, IReactorSSL
+from twisted.internet.interfaces import IReactorTCP, IReactorSSL, IReactorTime
 
 from twisted.protocols import tls
 from twisted.python import log
 
 from twisted.web import http
 
-from zope.interface import implements
-
+from zope.interface import implementer
 
 class ProxyConnectError(ConnectError):
     pass
 
-
+@implementer(IReactorTCP, IReactorSSL, IReactorTime)
 class HTTPProxyConnector(object):
     """Helper to wrap reactor connection API (TCP, SSL) via a CONNECT proxy."""
-    implements(IReactorTCP, IReactorSSL)
 
     def __init__(self, proxy_host, proxy_port,
                  reactor=reactor):
@@ -47,6 +45,11 @@ class HTTPProxyConnector(object):
         tlsFactory = tls.TLSMemoryBIOFactory(contextFactory, True, factory)
         return self.connectTCP(host, port, tlsFactory, timeout, bindAddress)
 
+    def seconds(self):
+        return self.reactor.seconds()
+
+    def callLater(self, delay, callable, *args, **kw):
+        return self.reactor.callLater(delay, callable, *args, **kw)
 
 class HTTPProxiedClientFactory(protocol.ClientFactory):
     """ClientFactory wrapper that triggers an HTTP proxy CONNECT on connect"""
